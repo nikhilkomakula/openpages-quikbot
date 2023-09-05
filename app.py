@@ -10,11 +10,17 @@ from genai.schemas import GenerateParams
 from genai.extensions.langchain import LangChainInterface
 
 # import LangChain library
+from langchain.chains import RetrievalQA
 from langchain.vectorstores import Chroma
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.document_loaders import PyPDFDirectoryLoader
-from langchain.chains.question_answering import load_qa_chain
+from langchain.document_loaders import PDFMinerLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings.sentence_transformer import SentenceTransformerEmbeddings
+
+# initialize variables
+pdf_folder_path = './data'
+db_folder_path = './db'
+model_id = 'google/ul2'
+db = None
 
 # get GenAI credentials
 def get_genai_creds():
@@ -26,49 +32,52 @@ def get_genai_creds():
     creds = Credentials(api_key, api_url)
     return creds
 
+# define embedding function
+def initEmbedFunc():
+    embedding_function = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    return embedding_function
+
 # populate chroma db
 def generateDB():
-    # load PDFs from folder
-    loader = PyPDFDirectoryLoader(pdf_folder_path)
-    documents = loader.load()    
+    docs = []
+    for root, dirs, files in os.walk(pdf_folder_path):
+        for file in files:
+            if file.endswith(".pdf"):
+                print(f'Reading File: {file}')
+                
+                # read PDF
+                loader = PDFMinerLoader(os.path.join(root, file))
+                documents = loader.load()
 
-    # load the document and split it into chunks
-    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0, separator='\n')
-    docs = text_splitter.split_documents(documents)
+                # load the document and split it into chunks
+                text_splitter = RecursiveCharacterTextSplitter(
+                                    chunk_size=1000, 
+                                    chunk_overlap=100, 
+                                    separators=["\n"]
+                )
+                temp = text_splitter.split_documents(documents)
+                
+                # append to docs
+                docs += temp
 
     # create the open-source embedding function
-    embedding_function = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    embedding_function = initEmbedFunc()
 
     # save to disk
-    db = Chroma.from_documents(docs, embedding_function, persist_directory="./db")
+    db = Chroma.from_documents(docs, embedding_function, persist_directory=db_folder_path)
     
     return db
 
 # generate response
-def generateResponse(query, db):
-    
-    # retrieve results from chroma db
-    results = db.similarity_search(query)
-    
-    # generate the response
-    response = chain({"input_documents": results, "question": query})
-    
-    return response["output_text"]    
+def generateResponse(query, qa):    
+    generated_text = qa(query)
+    answer = generated_text['result']
+    return answer     
 
-# ** start from here **
-
-# variables
-# ibm/mpt-7b-instruct -> 3/5
-# meta-llama/llama-2-7b -> 3/5
-# ibm/granite-13b-sft -> 3/5
-# google/ul2 -> 3.5/5
-model_id = 'google/ul2'
-pdf_folder_path = './data'
-db_folder_path = './db'
-db = None
+# *** START HERE ***
 
 if [f for f in os.listdir(db_folder_path) if not f.startswith('.')] == []:
-    print("Chroma DB is empty. Populating it.")
+    print("Chroma DB is empty. Generating indexes...")
     
     # generate chroma db
     db = generateDB()
@@ -76,28 +85,38 @@ else:
     print("Chroma DB is not empty.")
 
     # create the open-source embedding function
-    embedding_function = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    embedding_function = initEmbedFunc()
 
     # load from disk
-    db = Chroma(persist_directory="./db", embedding_function=embedding_function)
+    db = Chroma(persist_directory=db_folder_path, embedding_function=embedding_function)
 
 # get credentials
-credentials = get_genai_creds()
+creds = get_genai_creds()
 
 # generate LLM params
 params = GenerateParams(
-            decoding_method='greedy', 
-            min_new_tokens=1,
-            max_new_tokens=200,
-            stream=False,
-            temperature=0.7,
-            repetition_penalty=2)
+    decoding_method="sample",
+    max_new_tokens=200,
+    min_new_tokens=1,
+    stream=False,
+    temperature=0.55,
+    top_k=50,
+    top_p=1,
+    repetition_penalty=1.5
+)
 
 # create a langchain interface to use with retrieved content
-langchain_model = LangChainInterface(model=model_id, params=params, credentials=credentials)
+langchain_model = LangChainInterface(model=model_id, params=params, credentials=creds)
 
-# create the chain
-chain = load_qa_chain(langchain_model, chain_type="stuff")
+# create retrieval QA chain
+retriever = db.as_retriever()
+qa = RetrievalQA.from_chain_type(
+        llm=langchain_model,
+        chain_type="stuff",
+        retriever=retriever,
+        return_source_documents=True
+)
 
-query = "What are the features of Operational Risk Management in OpenPages?"
-print(generateResponse(query, db))
+# query for response
+query = "Provide the steps to configure Watson Assistant in OpenPages?"
+generateResponse(query, qa)
