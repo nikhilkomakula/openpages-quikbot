@@ -82,7 +82,7 @@ if [f for f in os.listdir(db_folder_path) if not f.startswith('.')] == []:
     # generate chroma db
     db = generateDB()
 else:
-    print("Chroma DB is not empty.")
+    print("Chroma DB is not empty. Using existing indexes!")
 
     # create the open-source embedding function
     embedding_function = initEmbedFunc()
@@ -117,6 +117,25 @@ qa = RetrievalQA.from_chain_type(
         return_source_documents=True
 )
 
-# query for response
-query = "Provide the steps to configure Watson Assistant in OpenPages?"
-generateResponse(query, qa)
+# FLASK CODE
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Hello World!"
+
+@app.route('/test/<value>')
+def test(value):
+    return 'Here is the value passed: %s' % value
+
+@app.route('/qa/<query>')
+def respond(query):
+    print('Here is the query: %s' % query)
+    response = generateResponse(query, qa)
+    print(f'Here is the response: {response}')
+    return response
+
+if __name__ == '__main__':
+    app.run(debug=True)
