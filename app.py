@@ -96,7 +96,7 @@ creds = get_genai_creds()
 # generate LLM params
 params = GenerateParams(
     decoding_method="sample",
-    max_new_tokens=200,
+    max_new_tokens=250,
     min_new_tokens=1,
     stream=False,
     temperature=0.55,
@@ -123,7 +123,7 @@ from flask import Flask
 app = Flask(__name__)
 
 @app.route('/')
-def home():
+def hello():
     return "Hello World!"
 
 @app.route('/test/<value>')
