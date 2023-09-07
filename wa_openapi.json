@@ -1,0 +1,52 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Search OP Docs",
+    "description": "Used to search OP docs by asking a question",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://00d9-49-43-218-226.ngrok-free.app"
+    }
+  ],
+  "paths": {
+    "/qa": {
+      "post": {
+        "description": "Endpoint to respond to a question",
+        "parameters": [
+          {
+            "name": "question",
+            "in": "query",
+            "description": "Question to be Asked",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "answer": {
+                      "description": "The generated response",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error"
+          }
+        }
+      }
+    }
+  }
+}
