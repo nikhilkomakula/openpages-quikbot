@@ -118,7 +118,7 @@ qa = RetrievalQA.from_chain_type(
 )
 
 # FLASK CODE
-from flask import Flask
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
@@ -128,14 +128,21 @@ def hello():
 
 @app.route('/test/<value>')
 def test(value):
-    return 'Here is the value passed: %s' % value
+    return 'Here is the query string passed: %s' % value
 
-@app.route('/qa/<query>')
-def respond(query):
+@app.route('/qa', methods=['POST'])
+def respond():
+    query = request.args.get('question')
     print('Here is the query: %s' % query)
-    response = generateResponse(query, qa)
+    if (query is not None and len(query.strip()) > 0):
+        response = generateResponse(query, qa)
+    else:
+        response = "Invalid question! Please rephrase your question."
     print(f'Here is the response: {response}')
-    return response
+    data = {
+        'answer' : response
+    }
+    return jsonify(data)
 
 if __name__ == '__main__':
     app.run(debug=True)
