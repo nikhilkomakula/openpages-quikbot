@@ -51,7 +51,7 @@ def generateDB():
 
                 # load the document and split it into chunks
                 text_splitter = RecursiveCharacterTextSplitter(
-                                    chunk_size=1000, 
+                                    chunk_size=500, 
                                     chunk_overlap=100, 
                                     separators=["\n"]
                 )
@@ -96,7 +96,7 @@ creds = get_genai_creds()
 # generate LLM params
 params = GenerateParams(
     decoding_method="sample",
-    max_new_tokens=250,
+    max_new_tokens=150,
     min_new_tokens=1,
     stream=False,
     temperature=0.55,
