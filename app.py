@@ -10,6 +10,7 @@ from genai.schemas import GenerateParams
 from genai.extensions.langchain import LangChainInterface
 
 # import LangChain library
+from langchain import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import Chroma
 from langchain.document_loaders import PDFMinerLoader
@@ -52,7 +53,7 @@ def generateDB():
                 # load the document and split it into chunks
                 text_splitter = RecursiveCharacterTextSplitter(
                                     chunk_size=500, 
-                                    chunk_overlap=100, 
+                                    chunk_overlap=50, 
                                     separators=["\n"]
                 )
                 temp = text_splitter.split_documents(documents)
@@ -69,7 +70,7 @@ def generateDB():
     return db
 
 # generate response
-def generateResponse(query, qa):    
+def generateResponse(query, qa):
     generated_text = qa(query)
     answer = generated_text['result']
     return answer     
@@ -96,7 +97,7 @@ creds = get_genai_creds()
 # generate LLM params
 params = GenerateParams(
     decoding_method="sample",
-    max_new_tokens=150,
+    max_new_tokens=200,
     min_new_tokens=1,
     stream=False,
     temperature=0.55,
@@ -108,12 +109,27 @@ params = GenerateParams(
 # create a langchain interface to use with retrieved content
 langchain_model = LangChainInterface(model=model_id, params=params, credentials=creds)
 
+# Define prompt
+template = """Answer the question based on the context below. Keep the answer short and concise. Respond "Unsure about answer" if not sure about the answer.
+
+Context: {context}
+
+Question: {question}
+
+Answer: """
+
+# instantiate prompt template
+prompt_template = PromptTemplate(
+    input_variables=["context", "question"],
+    template=template
+)
+
 # create retrieval QA chain
-retriever = db.as_retriever()
 qa = RetrievalQA.from_chain_type(
         llm=langchain_model,
         chain_type="stuff",
-        retriever=retriever,
+        retriever=db.as_retriever(search_type="similarity", search_kwargs={"k": 7}),
+        chain_type_kwargs={"prompt": prompt_template},
         return_source_documents=True
 )
 
