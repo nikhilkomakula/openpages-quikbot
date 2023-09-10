@@ -161,4 +161,4 @@ def respond():
     return jsonify(data)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5002)
+    app.run(host="0.0.0.0", port=5002, debug=True)
