@@ -133,7 +133,7 @@ qa = RetrievalQA.from_chain_type(
         return_source_documents=True
 )
 
-# FLASK CODE
+# *** FLASK CODE ***
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
