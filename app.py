@@ -10,7 +10,6 @@ from genai.schemas import GenerateParams
 from genai.extensions.langchain import LangChainInterface
 
 # import LangChain library
-from langchain import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import Chroma
 from langchain.document_loaders import PDFMinerLoader
@@ -20,7 +19,7 @@ from langchain.embeddings.sentence_transformer import SentenceTransformerEmbeddi
 # initialize variables
 pdf_folder_path = './data'
 db_folder_path = './db'
-model_id = 'google/ul2'
+model_id = 'meta-llama/llama-2-13b-chat-beam'
 db = None
 
 # get GenAI credentials
@@ -52,8 +51,8 @@ def generateDB():
 
                 # load the document and split it into chunks
                 text_splitter = RecursiveCharacterTextSplitter(
-                                    chunk_size=500, 
-                                    chunk_overlap=50, 
+                                    chunk_size=1000, 
+                                    chunk_overlap=200, 
                                     separators=["\n"]
                 )
                 temp = text_splitter.split_documents(documents)
@@ -96,40 +95,21 @@ creds = get_genai_creds()
 
 # generate LLM params
 params = GenerateParams(
-    decoding_method="sample",
-    max_new_tokens=200,
-    min_new_tokens=1,
-    stream=False,
-    temperature=0.55,
-    top_k=50,
-    top_p=1,
-    repetition_penalty=1.5
-)
+            decoding_method='greedy', 
+            min_new_tokens=1,
+            max_new_tokens=200,
+            stream=False,
+            repetition_penalty=1.2)
 
 # create a langchain interface to use with retrieved content
 langchain_model = LangChainInterface(model=model_id, params=params, credentials=creds)
 
-# Define prompt
-template = """Answer the question based on the context below. Keep the answer short and concise. Respond "Unsure about answer" if not sure about the answer.
-
-Context: {context}
-
-Question: {question}
-
-Answer: """
-
-# instantiate prompt template
-prompt_template = PromptTemplate(
-    input_variables=["context", "question"],
-    template=template
-)
-
 # create retrieval QA chain
+# create retrieval QA
 qa = RetrievalQA.from_chain_type(
         llm=langchain_model,
-        chain_type="stuff",
-        retriever=db.as_retriever(search_type="similarity", search_kwargs={"k": 7}),
-        chain_type_kwargs={"prompt": prompt_template},
+        chain_type='stuff',
+        retriever=db.as_retriever(search_type='similarity', search_kwargs={'k': 2}),
         return_source_documents=True
 )
 
