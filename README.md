@@ -1,3 +1,9 @@
-# Search IBM OpenPages with Watson documentation
+# OpenPages QuikBot
 
-Use LLMs to search OpenPages documents like Administrators Guide, Solutions Guide and Triggers Guide.
+Convesational chatbot that addresses common queries related to IBM OpenPages based on the public documentation available.
+
+## Pre-requisites
+- IBM Cloud Account
+- Watson Assistant Instance
+- Watsonx.ai Project
+- Python Flask Deployment Instance
